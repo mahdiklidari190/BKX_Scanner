@@ -8,23 +8,28 @@ from colorama import Fore, Style, init
 # فعال‌سازی Colorama برای رنگ‌بندی در ترمینال
 init(autoreset=True)
 
-FEATURES = {
-    "1": "SSRF Scan",
-    "2": "IDOR Scan",
-    "3": "RCE Scan",
-    "4": "Path Traversal",
-    "5": "Directory Bruteforce",
-    "6": "Sensitive Files Scan",
-    "7": "Shodan Lookup",
-    "8": "Multi-threaded Scan",
-    "9": "Interactive Mode",
-    "10": "Proxy Support",
-    "11": "Exit"
+FEATURES_MAPPING = {
+    "1": "scan_ssrf",
+    "2": "scan_idor",
+    "3": "scan_rce",
+    "4": "scan_path_traversal",
+    "5": "scan_directory_bruteforce",
+    "6": "scan_sensitive_files",
+    "7": "scan_shodan_lookup",
+    "8": "scan_multi_threaded",
+    "9": "scan_interactive_mode",
+    "10": "scan_proxy_support",
+    "11": "exit_program"
 }
 
 LOGO = f"""{Fore.CYAN}
-BK
-{Style.RESET_ALL}"""
+ █████╗ ██╗     ██╗
+██╔══██╗██║     ██║
+███████║██║     ██║
+██╔══██║██║     ██║
+██║  ██║███████╗██║
+╚═╝  ╚═╝╚══════╝╚═╝ {Fore.YELLOW} [AI Security Scanner] {Style.RESET_ALL}
+"""
 
 class BKXScanner:
     def __init__(self, target_url, shodan_api_key=None, proxy=False):
@@ -66,7 +71,7 @@ class BKXScanner:
     async def close(self):
         await self.session.close()
 
-def slow_type(text, delay=0.02):
+def slow_type(text, delay=0.01):
     """افکت تایپ‌شدن متن برای نمایش حرفه‌ای‌تر"""
     for char in text:
         sys.stdout.write(char)
@@ -78,13 +83,9 @@ async def main():
     os.system("clear")
     slow_type(LOGO, delay=0.002)
 
-    target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}").strip()
-    if not target_url:
-        print(f"{Fore.RED}[✘] Target URL cannot be empty!{Style.RESET_ALL}")
-        return
-
+    target_url = input(f"{Fore.YELLOW}🔗 Enter target URL: {Style.RESET_ALL}")
     shodan_key = os.getenv("SHODAN_API_KEY")
-    proxy = input(f"{Fore.YELLOW}Use proxy? (yes/no): {Style.RESET_ALL}").strip().lower() == "yes"
+    proxy = input(f"{Fore.YELLOW}🛡️ Use proxy? (yes/no): {Style.RESET_ALL}").strip().lower() == "yes"
     
     scanner = BKXScanner(target_url, shodan_api_key=shodan_key, proxy=proxy)
 
@@ -93,21 +94,21 @@ async def main():
         slow_type(LOGO, delay=0.002)
         print(f"{Fore.MAGENTA}📌 Available Scan Options:{Style.RESET_ALL}")
         
-        for key, feature in FEATURES.items():
-            print(f"{Fore.CYAN}[{key}] {feature}{Style.RESET_ALL}")
+        for key, feature in FEATURES_MAPPING.items():
+            print(f"{Fore.CYAN}[{key}] {feature.replace('_', ' ').title()}{Style.RESET_ALL}")
 
-        choice = input(f"\n{Fore.YELLOW}🔎 Select an option: {Style.RESET_ALL}").strip()
+        choice = input(f"\n{Fore.YELLOW}🔎 Select an option: {Style.RESET_ALL}")
 
         if choice == "11":
             slow_type(f"{Fore.RED}Exiting...{Style.RESET_ALL}")
             await scanner.close()
             break
 
-        if choice in FEATURES:
-            task_name = f"scan_{FEATURES[choice].lower().replace(' ', '_')}"
+        if choice in FEATURES_MAPPING:
+            task_name = FEATURES_MAPPING[choice]
             task = getattr(scanner, task_name, None)
             
-            if callable(task):  # چک می‌کنیم که تابع معتبر باشد
+            if callable(task):
                 result = await task()
                 slow_type(f"\n{Fore.GREEN}[✔] {result}\n{Style.RESET_ALL}", delay=0.005)
             else:
