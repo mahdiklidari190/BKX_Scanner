@@ -5,118 +5,160 @@ import time
 import sys
 from colorama import Fore, Style, init
 
-# فعال‌سازی Colorama برای رنگ‌بندی در ترمینال
 init(autoreset=True)
 
-FEATURES_MAPPING = {
-    "1": "scan_ssrf",
-    "2": "scan_idor",
-    "3": "scan_rce",
-    "4": "scan_path_traversal",
-    "5": "scan_directory_bruteforce",
-    "6": "scan_sensitive_files",
-    "7": "scan_shodan_lookup",
-    "8": "scan_multi_threaded",
-    "9": "scan_interactive_mode",
-    "10": "scan_proxy_support",
-    "11": "exit_program"
+FEATURES = {
+    "1": "SSRF Scan",
+    "2": "IDOR Scan",
+    "3": "RCE Scan",
+    "4": "Path Traversal",
+    "5": "Directory Bruteforce",
+    "6": "Sensitive Files Scan",
+    "7": "Shodan Lookup",
+    "8": "Multi-threaded Scan",
+    "9": "Interactive Mode",
+    "10": "Proxy Support",
+    "11": "Exit"
 }
 
 LOGO = f"""{Fore.CYAN}
- █████╗ ██╗     ██╗
-██╔══██╗██║     ██║
-███████║██║     ██║
-██╔══██║██║     ██║
-██║  ██║███████╗██║
-╚═╝  ╚═╝╚══════╝╚═╝ {Fore.YELLOW} [AI Security Scanner] {Style.RESET_ALL}
-"""
+ █████╗ ██╗
+██╔══██╗██║
+███████║██║
+██╔══██║██║
+██║  ██║███████╗
+╚═╝  ╚═╝╚══════╝
+{Style.RESET_ALL}"""
 
 class BKXScanner:
     def __init__(self, target_url, shodan_api_key=None, proxy=False):
         self.target_url = target_url
         self.shodan_api_key = shodan_api_key
         self.proxy = proxy
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.session = aiohttp.ClientSession()
 
     async def scan_ssrf(self):
-        return f"{Fore.GREEN}Scanning {self.target_url} for SSRF...{Style.RESET_ALL}"
+        """ بررسی SSRF با ارسال درخواست به یک URL داخلی """
+        test_url = f"{self.target_url}/internal-api"
+        print(f"{Fore.GREEN}Scanning {test_url} for SSRF...{Style.RESET_ALL}")
+        
+        try:
+            async with self.session.get(test_url) as response:
+                if response.status == 200:
+                    return f"{Fore.RED}Possible SSRF vulnerability detected!{Style.RESET_ALL}"
+                else:
+                    return f"{Fore.YELLOW}No SSRF vulnerability found.{Style.RESET_ALL}"
+        except Exception:
+            return f"{Fore.YELLOW}Target did not respond to SSRF test.{Style.RESET_ALL}"
 
     async def scan_idor(self):
-        return f"{Fore.GREEN}Scanning {self.target_url} for IDOR...{Style.RESET_ALL}"
+        """ تست IDOR با تغییر مقادیر شناسه """
+        test_url = f"{self.target_url}/profile?user_id=1"
+        print(f"{Fore.GREEN}Scanning {test_url} for IDOR...{Style.RESET_ALL}")
+
+        async with self.session.get(test_url) as response:
+            if response.status == 200:
+                return f"{Fore.RED}IDOR detected! You can access user data.{Style.RESET_ALL}"
+            return f"{Fore.YELLOW}No IDOR vulnerability found.{Style.RESET_ALL}"
 
     async def scan_rce(self):
-        return f"{Fore.GREEN}Scanning {self.target_url} for RCE...{Style.RESET_ALL}"
+        """ تست اجرای دستورات از راه دور """
+        test_url = f"{self.target_url}/run?cmd=whoami"
+        print(f"{Fore.GREEN}Scanning {test_url} for RCE...{Style.RESET_ALL}")
+
+        async with self.session.get(test_url) as response:
+            if response.status == 200 and "root" in await response.text():
+                return f"{Fore.RED}Possible RCE detected!{Style.RESET_ALL}"
+            return f"{Fore.YELLOW}No RCE vulnerability found.{Style.RESET_ALL}"
 
     async def scan_path_traversal(self):
-        return f"{Fore.GREEN}Scanning {self.target_url} for Path Traversal...{Style.RESET_ALL}"
+        """ بررسی دسترسی غیرمجاز به فایل‌های سیستمی """
+        test_url = f"{self.target_url}/download?file=../../etc/passwd"
+        print(f"{Fore.GREEN}Scanning {test_url} for Path Traversal...{Style.RESET_ALL}")
+
+        async with self.session.get(test_url) as response:
+            if response.status == 200 and "root" in await response.text():
+                return f"{Fore.RED}Possible Path Traversal vulnerability found!{Style.RESET_ALL}"
+            return f"{Fore.YELLOW}No Path Traversal vulnerability found.{Style.RESET_ALL}"
 
     async def scan_directory_bruteforce(self):
-        return f"{Fore.GREEN}Scanning {self.target_url} for Directory Bruteforce...{Style.RESET_ALL}"
+        """ تست مسیرهای مخفی سایت """
+        paths = ["/admin", "/backup", "/hidden"]
+        for path in paths:
+            url = f"{self.target_url}{path}"
+            print(f"{Fore.GREEN}Checking {url}...{Style.RESET_ALL}")
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    print(f"{Fore.RED}Found: {url}{Style.RESET_ALL}")
+
+        return f"{Fore.YELLOW}Directory bruteforce scan completed.{Style.RESET_ALL}"
 
     async def scan_sensitive_files(self):
-        return f"{Fore.GREEN}Scanning {self.target_url} for Sensitive Files...{Style.RESET_ALL}"
+        """ بررسی وجود فایل‌های حساس """
+        files = ["/.env", "/config.php", "/.git/config"]
+        for file in files:
+            url = f"{self.target_url}{file}"
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    print(f"{Fore.RED}Sensitive file found: {url}{Style.RESET_ALL}")
+        return f"{Fore.YELLOW}Sensitive file scan completed.{Style.RESET_ALL}"
 
     async def scan_shodan_lookup(self):
-        return f"{Fore.GREEN}Searching {self.target_url} in Shodan...{Style.RESET_ALL}"
+        """ بررسی اطلاعات سرور در Shodan """
+        if not self.shodan_api_key:
+            return f"{Fore.RED}Shodan API Key is missing.{Style.RESET_ALL}"
+
+        async with self.session.get(f"https://api.shodan.io/shodan/host/{self.target_url}?key={self.shodan_api_key}") as response:
+            return await response.text()
 
     async def scan_multi_threaded(self):
-        return f"{Fore.GREEN}Performing Multi-threaded Scan on {self.target_url}...{Style.RESET_ALL}"
+        """ اجرای چندین اسکن همزمان """
+        tasks = [self.scan_ssrf(), self.scan_idor(), self.scan_rce()]
+        results = await asyncio.gather(*tasks)
+        return "\n".join(results)
 
     async def scan_interactive_mode(self):
-        return f"{Fore.YELLOW}Entering Interactive Mode...{Style.RESET_ALL}"
+        """ انتخاب چند اسکن به صورت تعاملی """
+        print(f"{Fore.YELLOW}Select multiple scans:{Style.RESET_ALL}")
+        selected = input("Enter scan numbers separated by commas: ").split(",")
+        tasks = [getattr(self, f"scan_{FEATURES[s].lower().replace(' ', '_')}")() for s in selected if s in FEATURES]
+        results = await asyncio.gather(*tasks)
+        return "\n".join(results)
 
     async def scan_proxy_support(self):
-        return f"{Fore.YELLOW}Enabling Proxy Support...{Style.RESET_ALL}"
+        return f"{Fore.YELLOW}Proxy support enabled (not implemented yet).{Style.RESET_ALL}"
 
     async def close(self):
         await self.session.close()
 
-def slow_type(text, delay=0.01):
-    """افکت تایپ‌شدن متن برای نمایش حرفه‌ای‌تر"""
-    for char in text:
-        sys.stdout.write(char)
-        sys.stdout.flush()
-        time.sleep(delay)
-    print()
-
 async def main():
     os.system("clear")
-    slow_type(LOGO, delay=0.002)
+    print(LOGO)
 
-    target_url = input(f"{Fore.YELLOW}🔗 Enter target URL: {Style.RESET_ALL}")
+    target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}")
     shodan_key = os.getenv("SHODAN_API_KEY")
-    proxy = input(f"{Fore.YELLOW}🛡️ Use proxy? (yes/no): {Style.RESET_ALL}").strip().lower() == "yes"
     
-    scanner = BKXScanner(target_url, shodan_api_key=shodan_key, proxy=proxy)
+    scanner = BKXScanner(target_url, shodan_api_key=shodan_key)
 
     while True:
         os.system("clear")
-        slow_type(LOGO, delay=0.002)
-        print(f"{Fore.MAGENTA}📌 Available Scan Options:{Style.RESET_ALL}")
-        
-        for key, feature in FEATURES_MAPPING.items():
-            print(f"{Fore.CYAN}[{key}] {feature.replace('_', ' ').title()}{Style.RESET_ALL}")
+        print(LOGO)
+        for key, feature in FEATURES.items():
+            print(f"{Fore.CYAN}[{key}] {feature}{Style.RESET_ALL}")
 
-        choice = input(f"\n{Fore.YELLOW}🔎 Select an option: {Style.RESET_ALL}")
+        choice = input(f"\n{Fore.YELLOW}Select an option: {Style.RESET_ALL}")
 
         if choice == "11":
-            slow_type(f"{Fore.RED}Exiting...{Style.RESET_ALL}")
             await scanner.close()
             break
 
-        if choice in FEATURES_MAPPING:
-            task_name = FEATURES_MAPPING[choice]
+        if choice in FEATURES:
+            task_name = f"scan_{FEATURES[choice].lower().replace(' ', '_')}"
             task = getattr(scanner, task_name, None)
             
-            if callable(task):
+            if task:
                 result = await task()
-                slow_type(f"\n{Fore.GREEN}[✔] {result}\n{Style.RESET_ALL}", delay=0.005)
-            else:
-                slow_type(f"\n{Fore.RED}[✘] This feature is not implemented yet!{Style.RESET_ALL}", delay=0.005)
-        else:
-            slow_type(f"\n{Fore.RED}[✘] Invalid input! Please enter a valid number.{Style.RESET_ALL}", delay=0.005)
-
-        input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
-
-if __name__ == "__main__":
-    asyncio.run(main())  # اجرای برنامه با مدیریت صحیح event loop
+                print(result)
+                input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
