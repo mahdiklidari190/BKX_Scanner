@@ -1,7 +1,6 @@
 import asyncio
 import aiohttp
 import os
-import time
 import sys
 from colorama import Fore, Style, init
 
@@ -35,9 +34,16 @@ class BKXScanner:
         self.target_url = target_url
         self.shodan_api_key = shodan_api_key
         self.proxy = proxy
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
+        self.session = None
+
+    async def start_session(self):
+        """ایجاد سشن برای درخواست‌های HTTP"""
         self.session = aiohttp.ClientSession()
+
+    async def close_session(self):
+        """بستن سشن بعد از اتمام اسکن"""
+        if self.session:
+            await self.session.close()
 
     async def scan_ssrf(self):
         """ بررسی SSRF با ارسال درخواست به یک URL داخلی """
@@ -83,82 +89,40 @@ class BKXScanner:
                 return f"{Fore.RED}Possible Path Traversal vulnerability found!{Style.RESET_ALL}"
             return f"{Fore.YELLOW}No Path Traversal vulnerability found.{Style.RESET_ALL}"
 
-    async def scan_directory_bruteforce(self):
-        """ تست مسیرهای مخفی سایت """
-        paths = ["/admin", "/backup", "/hidden"]
-        for path in paths:
-            url = f"{self.target_url}{path}"
-            print(f"{Fore.GREEN}Checking {url}...{Style.RESET_ALL}")
-            async with self.session.get(url) as response:
-                if response.status == 200:
-                    print(f"{Fore.RED}Found: {url}{Style.RESET_ALL}")
-
-        return f"{Fore.YELLOW}Directory bruteforce scan completed.{Style.RESET_ALL}"
-
-    async def scan_sensitive_files(self):
-        """ بررسی وجود فایل‌های حساس """
-        files = ["/.env", "/config.php", "/.git/config"]
-        for file in files:
-            url = f"{self.target_url}{file}"
-            async with self.session.get(url) as response:
-                if response.status == 200:
-                    print(f"{Fore.RED}Sensitive file found: {url}{Style.RESET_ALL}")
-        return f"{Fore.YELLOW}Sensitive file scan completed.{Style.RESET_ALL}"
-
-    async def scan_shodan_lookup(self):
-        """ بررسی اطلاعات سرور در Shodan """
-        if not self.shodan_api_key:
-            return f"{Fore.RED}Shodan API Key is missing.{Style.RESET_ALL}"
-
-        async with self.session.get(f"https://api.shodan.io/shodan/host/{self.target_url}?key={self.shodan_api_key}") as response:
-            return await response.text()
-
-    async def scan_multi_threaded(self):
-        """ اجرای چندین اسکن همزمان """
-        tasks = [self.scan_ssrf(), self.scan_idor(), self.scan_rce()]
-        results = await asyncio.gather(*tasks)
-        return "\n".join(results)
-
-    async def scan_interactive_mode(self):
-        """ انتخاب چند اسکن به صورت تعاملی """
-        print(f"{Fore.YELLOW}Select multiple scans:{Style.RESET_ALL}")
-        selected = input("Enter scan numbers separated by commas: ").split(",")
-        tasks = [getattr(self, f"scan_{FEATURES[s].lower().replace(' ', '_')}")() for s in selected if s in FEATURES]
-        results = await asyncio.gather(*tasks)
-        return "\n".join(results)
-
-    async def scan_proxy_support(self):
-        return f"{Fore.YELLOW}Proxy support enabled (not implemented yet).{Style.RESET_ALL}"
-
-    async def close(self):
-        await self.session.close()
-
 async def main():
-    os.system("clear")
-    print(LOGO)
-
-    target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}")
-    shodan_key = os.getenv("SHODAN_API_KEY")
-    
-    scanner = BKXScanner(target_url, shodan_api_key=shodan_key)
-
-    while True:
+    try:
         os.system("clear")
         print(LOGO)
-        for key, feature in FEATURES.items():
-            print(f"{Fore.CYAN}[{key}] {feature}{Style.RESET_ALL}")
 
-        choice = input(f"\n{Fore.YELLOW}Select an option: {Style.RESET_ALL}")
+        target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}")
+        shodan_key = os.getenv("SHODAN_API_KEY")
 
-        if choice == "11":
-            await scanner.close()
-            break
+        scanner = BKXScanner(target_url, shodan_api_key=shodan_key)
+        await scanner.start_session()
 
-        if choice in FEATURES:
-            task_name = f"scan_{FEATURES[choice].lower().replace(' ', '_')}"
-            task = getattr(scanner, task_name, None)
-            
-            if task:
-                result = await task()
-                print(result)
-                input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
+        while True:
+            os.system("clear")
+            print(LOGO)
+            for key, feature in FEATURES.items():
+                print(f"{Fore.CYAN}[{key}] {feature}{Style.RESET_ALL}")
+
+            choice = input(f"\n{Fore.YELLOW}Select an option: {Style.RESET_ALL}")
+
+            if choice == "11":
+                await scanner.close_session()
+                break
+
+            if choice in FEATURES:
+                task_name = f"scan_{FEATURES[choice].lower().replace(' ', '_')}"
+                task = getattr(scanner, task_name, None)
+
+                if task:
+                    result = await task()
+                    print(result)
+                    input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
+
+    except Exception as e:
+        print(f"{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
