@@ -146,6 +146,8 @@ def show_menu():
     print("\n[1] SQL Injection Test")
     print("[2] XSS Test")
     print("[3] Full Scan (All Tests)")
+    print("[4] Scan Links")
+    print("[5] Generate JSON Report")
     print("-" * 50)
 
 async def main():
@@ -153,8 +155,8 @@ async def main():
     show_logo()
     show_menu()
     try:
-        choice = int(input("Enter your choice (1-3): "))
-        if choice not in [1, 2, 3]:
+        choice = int(input("Enter your choice (1-5): "))
+        if choice not in [1, 2, 3, 4, 5]:
             print("[!] Invalid choice! Exiting...")
             return
 
@@ -173,6 +175,12 @@ async def main():
         elif choice == 3:
             print("\n[*] Starting Full Scan...")
             await scanner.start_scan()
+        elif choice == 4:
+            print("\n[*] Starting Link Scanning...")
+            await scanner.scan_links()
+        elif choice == 5:
+            print("\n[*] Generating JSON Report...")
+            await scanner.generate_json_report()
 
         print("\n[✔] Scanning completed successfully.")
     except Exception as e:
