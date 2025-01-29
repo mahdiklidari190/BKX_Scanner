@@ -2,7 +2,6 @@ import asyncio
 import aiohttp
 import os
 import sys
-import subprocess
 from colorama import Fore, Style, init
 
 # تنظیمات colorama
@@ -20,11 +19,7 @@ FEATURES = {
     "8": "multi_threaded_scan",
     "9": "interactive_mode",
     "10": "proxy_support",
-    "11": "nikto_scan",
-    "12": "gobuster_scan",
-    "13": "metasploit_scan",
-    "14": "dirbuster_scan",
-    "15": "exit"
+    "11": "exit"
 }
 
 # لوگوی ابزار
@@ -159,50 +154,46 @@ class BKXScanner:
         else:
             print(f"{Fore.YELLOW}[X] SSRF exploit failed.{Style.RESET_ALL}")
 
-    async def scan_nikto(self):
-        """ استفاده از Nikto برای اسکن آسیب‌پذیری‌ها """
-        print(f"{Fore.GREEN}Running Nikto scan on {self.target_url}...{Style.RESET_ALL}")
-        try:
-            result = subprocess.run(["nikto", "-h", self.target_url], capture_output=True, text=True)
-            if result.returncode == 0:
-                print(f"{Fore.YELLOW}Nikto scan results:\n{result.stdout}{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.RED}Nikto scan failed:{Style.RESET_ALL}\n{result.stderr}")
-        except Exception as e:
-            print(f"{Fore.RED}Error running Nikto: {e}{Style.RESET_ALL}")
+async def main():
+    os.system("cls" if os.name == "nt" else "clear")
+    print(LOGO)
 
-    async def scan_gobuster(self):
-        """ استفاده از Gobuster برای اسکن دایرکتوری‌ها """
-        print(f"{Fore.GREEN}Running Gobuster directory scan on {self.target_url}...{Style.RESET_ALL}")
-        try:
-            result = subprocess.run(["gobuster", "dir", "-u", self.target_url, "-w", "/path/to/wordlist.txt"], capture_output=True, text=True)
-            if result.returncode == 0:
-                print(f"{Fore.YELLOW}Gobuster scan results:\n{result.stdout}{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.RED}Gobuster scan failed:{Style.RESET_ALL}\n{result.stderr}")
-        except Exception as e:
-            print(f"{Fore.RED}Error running Gobuster: {e}{Style.RESET_ALL}")
+    target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}")
+    if not target_url.startswith("http"):
+        print(f"{Fore.RED}Invalid URL! Please include http:// or https://{Style.RESET_ALL}")
+        return
 
-    async def scan_metasploit(self):
-        """ استفاده از Metasploit برای تست نفوذ """
-        print(f"{Fore.GREEN}Running Metasploit exploit on {self.target_url}...{Style.RESET_ALL}")
-        try:
-            result = subprocess.run(["msfconsole", "-x", f"use exploit/multi/handler; set RHOST {self.target_url}; run"], capture_output=True, text=True)
-            if result.returncode == 0:
-                print(f"{Fore.YELLOW}Metasploit exploit results:\n{result.stdout}{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.RED}Metasploit exploit failed:{Style.RESET_ALL}\n{result.stderr}")
-        except Exception as e:
-            print(f"{Fore.RED}Error running Metasploit: {e}{Style.RESET_ALL}")
+    scanner = BKXScanner(target_url)
+    await scanner.start_session()
 
-    async def scan_dirbuster(self):
-        """ استفاده از DirBuster برای اسکن دایرکتوری‌ها """
-        print(f"{Fore.GREEN}Running DirBuster scan on {self.target_url}...{Style.RESET_ALL}")
-        try:
-            result = subprocess.run(["dirbuster", "-u", self.target_url, "-w", "/path/to/wordlist.txt"], capture_output=True, text=True)
-            if result.returncode == 0:
-                print(f"{Fore.YELLOW}DirBuster scan results:\n{result.stdout}{Style.RESET_ALL}")
+    while True:
+        os.system("cls" if os.name == "nt" else "clear")
+        print(LOGO)
+
+        for key, feature in FEATURES.items():
+            print(f"{Fore.CYAN}[{key}] {feature.replace('_', ' ').title()}{Style.RESET_ALL}")
+
+        choice = input(f"\n{Fore.YELLOW}Select an option: {Style.RESET_ALL}")
+
+        if choice == "11":
+            print(f"{Fore.GREEN}Exiting...{Style.RESET_ALL}")
+            break
+
+        if choice in FEATURES:
+            task_name = f"scan_{FEATURES[choice]}"
+            task = getattr(scanner, task_name, None)
+
+            if task and callable(task):
+                await task()
+                input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
             else:
-                print(f"{Fore.RED}DirBuster scan failed:{Style.RESET_ALL}\n{result.stderr}")
-        except Exception as e:
-            print(f"{Fore.RED}Error running DirBuster: {e}{Style.RESET_ALL}")
+                print(f"{Fore.RED}Feature not implemented yet.{Style.RESET_ALL}")
+                input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
+        else:
+            print(f"{Fore.RED}Invalid choice! Please select a valid option.{Style.RESET_ALL}")
+            input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
+
+    await scanner.close_session()
+
+if __name__ == "__main__":
+    asyncio.run(main())
