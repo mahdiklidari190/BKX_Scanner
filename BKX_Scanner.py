@@ -1,7 +1,12 @@
 import asyncio
 import aiohttp
 import os
-import curses
+import time
+import sys
+from colorama import Fore, Style, init
+
+# فعال‌سازی Colorama برای رنگ‌بندی در ترمینال
+init(autoreset=True)
 
 FEATURES = {
     "1": "SSRF Scan",
@@ -17,14 +22,14 @@ FEATURES = {
     "11": "Exit"
 }
 
-LOGO = """
+LOGO = f"""{Fore.CYAN}
 ██████╗ ██╗  ██╗██╗  ██╗    ███████╗ ██████╗ ██████╗ ███████╗
 ██╔══██╗██║ ██╔╝██║ ██╔╝    ██╔════╝██╔═══██╗██╔══██╗██╔════╝
 ██║  ██║█████╔╝ █████╔╝     █████╗  ██║   ██║██████╔╝█████╗  
 ██║  ██║██╔═██╗ ██╔═██╗     ██╔══╝  ██║   ██║██╔═══╝ ██╔══╝  
 ██████╔╝██║  ██╗██║  ██╗    ██║     ╚██████╔╝██║     ███████╗
 ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝    ╚═╝      ╚═════╝ ╚═╝     ╚══════╝
-"""
+{Style.RESET_ALL}"""
 
 class BKXScanner:
     def __init__(self, target_url, shodan_api_key=None, proxy=False):
@@ -36,84 +41,85 @@ class BKXScanner:
         self.session = aiohttp.ClientSession()
 
     async def scan_ssrf(self):
-        return f"Scanning {self.target_url} for SSRF..."
+        return f"{Fore.GREEN}Scanning {self.target_url} for SSRF...{Style.RESET_ALL}"
 
     async def scan_idor(self):
-        return f"Scanning {self.target_url} for IDOR..."
+        return f"{Fore.GREEN}Scanning {self.target_url} for IDOR...{Style.RESET_ALL}"
 
     async def scan_rce(self):
-        return f"Scanning {self.target_url} for RCE..."
+        return f"{Fore.GREEN}Scanning {self.target_url} for RCE...{Style.RESET_ALL}"
 
     async def scan_path_traversal(self):
-        return f"Scanning {self.target_url} for Path Traversal..."
+        return f"{Fore.GREEN}Scanning {self.target_url} for Path Traversal...{Style.RESET_ALL}"
 
     async def scan_directory_bruteforce(self):
-        return f"Scanning {self.target_url} for Directory Bruteforce..."
+        return f"{Fore.GREEN}Scanning {self.target_url} for Directory Bruteforce...{Style.RESET_ALL}"
 
     async def scan_sensitive_files(self):
-        return f"Scanning {self.target_url} for Sensitive Files..."
+        return f"{Fore.GREEN}Scanning {self.target_url} for Sensitive Files...{Style.RESET_ALL}"
 
     async def scan_shodan_lookup(self):
-        return f"Searching {self.target_url} in Shodan..."
+        return f"{Fore.GREEN}Searching {self.target_url} in Shodan...{Style.RESET_ALL}"
 
     async def scan_multi_threaded(self):
-        return f"Performing Multi-threaded Scan on {self.target_url}..."
+        return f"{Fore.GREEN}Performing Multi-threaded Scan on {self.target_url}...{Style.RESET_ALL}"
 
     async def scan_interactive_mode(self):
-        return "Entering Interactive Mode..."
+        return f"{Fore.YELLOW}Entering Interactive Mode...{Style.RESET_ALL}"
 
     async def scan_proxy_support(self):
-        return "Enabling Proxy Support..."
+        return f"{Fore.YELLOW}Enabling Proxy Support...{Style.RESET_ALL}"
 
     async def close(self):
         await self.session.close()
 
-async def user_interface(stdscr):
-    """Console User Interface"""
-    curses.curs_set(0)
-    stdscr.clear()
-    stdscr.refresh()
-
-    stdscr.addstr(1, 5, LOGO, curses.A_BOLD)
-    stdscr.addstr(10, 5, "BKX Scanner Tools:", curses.A_UNDERLINE)
-
-    row = 12
-    for key, feature in FEATURES.items():
-        stdscr.addstr(row, 7, f"[{key}] {feature}")
-        row += 1
-
-    stdscr.addstr(row + 2, 5, "Select an option:")
-    stdscr.refresh()
-
-    while True:
-        key = stdscr.getch()
-        key = chr(key)
-        if key in FEATURES:
-            return key
+def slow_type(text, delay=0.02):
+    """افکت تایپ‌شدن متن برای نمایش حرفه‌ای‌تر"""
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(delay)
+    print()
 
 async def main():
-    target_url = input("Enter target URL: ")
+    os.system("clear")
+    slow_type(LOGO, delay=0.002)
+
+    target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}")
     shodan_key = os.getenv("SHODAN_API_KEY")
-    proxy = input("Use proxy? (yes/no): ").strip().lower() == "yes"
+    proxy = input(f"{Fore.YELLOW}Use proxy? (yes/no): {Style.RESET_ALL}").strip().lower() == "yes"
     
     scanner = BKXScanner(target_url, shodan_api_key=shodan_key, proxy=proxy)
 
     while True:
-        choice = await curses.wrapper(user_interface)  # فراخوانی درست برای جلوگیری از coroutine object
+        os.system("clear")
+        slow_type(LOGO, delay=0.002)
+        print(f"{Fore.MAGENTA}📌 Available Scan Options:{Style.RESET_ALL}")
+        
+        for key, feature in FEATURES.items():
+            print(f"{Fore.CYAN}[{key}] {feature}{Style.RESET_ALL}")
+
+        choice = input(f"\n{Fore.YELLOW}🔎 Select an option: {Style.RESET_ALL}")
 
         if choice == "11":
-            print("Exiting...")
+            slow_type(f"{Fore.RED}Exiting...{Style.RESET_ALL}")
             await scanner.close()
             break
 
-        task_name = f"scan_{FEATURES[choice].lower().replace(' ', '_')}"
-        task = getattr(scanner, task_name, None)
-        
-        if task:
-            result = await task()
-            print(f"\n[Result]: {result}\n")
+        if choice in FEATURES:
+            task_name = f"scan_{FEATURES[choice].lower().replace(' ', '_')}"
+            task = getattr(scanner, task_name, None)
+            
+            if task:
+                result = await task()
+                slow_type(f"\n{Fore.GREEN}[✔] {result}\n{Style.RESET_ALL}", delay=0.005)
+                input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
+            else:
+                slow_type(f"\n{Fore.RED}[✘] Invalid option!{Style.RESET_ALL}", delay=0.005)
+                input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
         else:
-            print("\n[Error]: Invalid option!\n")
+            slow_type(f"\n{Fore.RED}[✘] Invalid input! Please enter a valid number.{Style.RESET_ALL}", delay=0.005)
+            input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
 
 if __name__ == "__main__":
-    asyncio.run(main())  # اجرای کامل برنامه با event loop مدیریت شده
+    asyncio.run(main())  # اجرای برنامه با مدیریت صحیح event loop
