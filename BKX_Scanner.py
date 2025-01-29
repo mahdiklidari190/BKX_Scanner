@@ -10,42 +10,38 @@ import os
 
 # ASCII LOGO BK
 LOGO = """
- /$$$$$$$  /$$   /$$
-| $$__  $$| $$  | $$
-| $$  \ $$| $$  | $$
-| $$$$$$$/| $$$$$$$$
-| $$____/ |_____  $$
-| $$            | $$
-| $$            | $$
-|__/            |__/
+██████╗ ██╗  ██╗
+██╔══██╗██║  ██║
+██████╔╝███████║
+██╔═══╝ ██╔══██║
+██║     ██║  ██║
+╚═╝     ╚═╝  ╚═╝
 """
 
-# ویژگی‌ها با شماره‌های مربوطه
+# FEATURES LIST
 FEATURES = {
-    "1": "بررسی سرآیندهای امنیتی",
-    "2": "بررسی IDOR",
-    "3": "بررسی SSRF",
-    "4": "بررسی Path Traversal",
-    "5": "بررسی XSS",
-    "6": "بررسی SQL Injection",
-    "7": "بررسی RCE",
-    "8": "اسکن با Shodan",
-    "9": "پشتیبانی از پروکسی",
-    "10": "اسکن دایرکتوری‌های مخفی",
-    "11": "بررسی فایل‌های حساس (robots.txt و .git/)",
-    "12": "خروج"
+    "1": "Check Security Headers",
+    "2": "Check IDOR",
+    "3": "Check SSRF",
+    "4": "Check Path Traversal",
+    "5": "Check XSS",
+    "6": "Check SQL Injection",
+    "7": "Check RCE",
+    "8": "Scan with Shodan",
+    "9": "Scan Hidden Directories",
+    "10": "Check Sensitive Files",
+    "11": "Exit"
 }
 
-class AdvancedScanner:
+class BKXScanner:
     def __init__(self, target_url, shodan_api_key=None, proxy=None):
         self.target_url = target_url.rstrip("/")
         self.session = aiohttp.ClientSession()
-        self.vulnerabilities = []
         self.shodan_api_key = shodan_api_key
         self.proxy = proxy
 
     async def check_security_headers(self):
-        """بررسی سرآیندهای امنیتی"""
+        """Check Security Headers"""
         try:
             async with self.session.get(self.target_url, proxy=self.proxy) as response:
                 headers = response.headers
@@ -61,149 +57,94 @@ class AdvancedScanner:
                     if header not in headers:
                         missing_headers.append(header)
                 if missing_headers:
-                    return f"عدم وجود سرآیندهای امنیتی: {missing_headers}"
-                return "سرآیندهای امنیتی کامل است."
+                    return f"Missing Security Headers: {missing_headers}"
+                return "All Security Headers are present."
         except Exception as e:
-            return f"خطا در بررسی سرآیندها: {str(e)}"
+            return f"Error Checking Headers: {str(e)}"
 
     async def scan_idor(self):
-        """بررسی IDOR"""
+        """Check IDOR"""
         params = self.extract_params(self.target_url)
-        if params:
-            return f"پارامترهای یافت‌شده برای تست IDOR: {params}"
-        return "پارامتر قابل تست برای IDOR یافت نشد."
+        return f"Parameters for IDOR Testing: {params}" if params else "No IDOR Parameters Found."
 
     async def scan_ssrf(self):
-        """بررسی SSRF"""
+        """Check SSRF"""
         payload = "http://169.254.169.254/latest/meta-data/"
         try:
             async with self.session.get(urljoin(self.target_url, payload), proxy=self.proxy) as response:
-                if response.status == 200:
-                    return "آسیب‌پذیری SSRF یافت شد!"
-            return "SSRF یافت نشد."
+                return "SSRF Vulnerability Detected!" if response.status == 200 else "No SSRF Found."
         except Exception as e:
-            return f"خطا در بررسی SSRF: {str(e)}"
+            return f"SSRF Check Error: {str(e)}"
 
     async def scan_path_traversal(self):
-        """بررسی Path Traversal"""
+        """Check Path Traversal"""
         test_url = f"{self.target_url}/../../etc/passwd"
         try:
             async with self.session.get(test_url, proxy=self.proxy) as response:
-                if "root:" in await response.text():
-                    return "آسیب‌پذیری Path Traversal یافت شد!"
-            return "Path Traversal یافت نشد."
+                return "Path Traversal Detected!" if "root:" in await response.text() else "No Path Traversal Found."
         except Exception as e:
-            return f"خطا در بررسی Path Traversal: {str(e)}"
+            return f"Path Traversal Error: {str(e)}"
 
     async def scan_xss(self):
-        """بررسی XSS"""
+        """Check XSS"""
         payload = "<script>alert('XSS')</script>"
         try:
             async with self.session.get(f"{self.target_url}?search={payload}", proxy=self.proxy) as response:
-                if payload in await response.text():
-                    return "آسیب‌پذیری XSS یافت شد!"
-            return "XSS یافت نشد."
+                return "XSS Vulnerability Detected!" if payload in await response.text() else "No XSS Found."
         except Exception as e:
-            return f"خطا در بررسی XSS: {str(e)}"
-
-    async def scan_sql_injection(self):
-        """بررسی SQL Injection"""
-        payload = "' OR 1=1 --"
-        try:
-            async with self.session.get(f"{self.target_url}?id={payload}", proxy=self.proxy) as response:
-                if "error" in await response.text().lower():
-                    return "آسیب‌پذیری SQL Injection یافت شد!"
-            return "SQL Injection یافت نشد."
-        except Exception as e:
-            return f"خطا در بررسی SQL Injection: {str(e)}"
-
-    async def scan_rce(self):
-        """بررسی RCE"""
-        payload = "<?php echo shell_exec('id'); ?>"
-        try:
-            async with self.session.get(f"{self.target_url}/upload.php?file={payload}", proxy=self.proxy) as response:
-                if "uid=" in await response.text():
-                    return "آسیب‌پذیری RCE یافت شد!"
-            return "RCE یافت نشد."
-        except Exception as e:
-            return f"خطا در بررسی RCE: {str(e)}"
+            return f"XSS Check Error: {str(e)}"
 
     async def shodan_scan(self):
-        """استفاده از Shodan برای بررسی اطلاعات سرور"""
+        """Scan with Shodan"""
         if not self.shodan_api_key:
-            return "Shodan API Key موجود نیست."
+            return "Shodan API Key Missing."
         try:
             api = Shodan(self.shodan_api_key)
             target_ip = urlparse(self.target_url).netloc
             results = api.host(target_ip)
-            return f"نتایج اسکن Shodan:\n{results}"
+            return f"Shodan Scan Results:\n{results}"
         except Exception as e:
-            return f"خطا در Shodan Scan: {str(e)}"
-
-    async def scan_hidden_directories(self):
-        """اسکن دایرکتوری‌های مخفی"""
-        wordlist = ["admin", "backup", "hidden", "test"]
-        found = []
-        for dir in wordlist:
-            test_url = f"{self.target_url}/{dir}"
-            try:
-                async with self.session.get(test_url, proxy=self.proxy) as response:
-                    if response.status == 200:
-                        found.append(test_url)
-            except Exception as e:
-                return f"خطا در اسکن دایرکتوری‌های مخفی: {str(e)}"
-        return f"دایرکتوری‌های مخفی یافت‌شده: {found}" if found else "هیچ دایرکتوری مخفی یافت نشد."
-
-    async def scan_sensitive_files(self):
-        """بررسی فایل‌های حساس"""
-        files = ["/robots.txt", "/.git/"]
-        found = []
-        for file in files:
-            test_url = f"{self.target_url}{file}"
-            try:
-                async with self.session.get(test_url, proxy=self.proxy) as response:
-                    if response.status == 200:
-                        found.append(test_url)
-            except Exception as e:
-                return f"خطا در بررسی فایل‌های حساس: {str(e)}"
-        return f"فایل‌های حساس یافت‌شده: {found}" if found else "هیچ فایل حساس یافت نشد."
+            return f"Shodan Scan Error: {str(e)}"
 
     def extract_params(self, url):
-        """استخراج پارامترهای ورودی URL"""
+        """Extract Parameters from URL"""
         parsed_url = urlparse(url)
         query = parse_qs(parsed_url.query)
         return list(query.keys())
 
 async def user_interface(stdscr):
-    """رابط کاربری کنسولی"""
+    """Terminal User Interface"""
     curses.curs_set(0)
     stdscr.clear()
     stdscr.refresh()
 
     stdscr.addstr(1, 5, LOGO, curses.A_BOLD)
-    stdscr.addstr(10, 5, "ابزارهای تست نفوذ:", curses.A_UNDERLINE)
+    stdscr.addstr(10, 5, "BKX Scanner Tools:", curses.A_UNDERLINE)
 
-    # نمایش لیست ویژگی‌ها
     row = 12
     for key, feature in FEATURES.items():
         stdscr.addstr(row, 7, f"[{key}] {feature}")
         row += 1
 
-    stdscr.addstr(row + 2, 5, "لطفاً شماره ابزار مورد نظر را انتخاب کنید:")
+    stdscr.addstr(row + 2, 5, "Enter Your Choice:")
     stdscr.refresh()
 
     while True:
         key = stdscr.getch()
         key = chr(key)
-
         if key in FEATURES:
             return key
 
 def main():
-    target_url = input("آدرس هدف را وارد کنید: ")
+    os.system("clear")  
+    print(LOGO)
+    print("Welcome to BKX Scanner")
+    
+    target_url = input("Enter Target URL: ")
     shodan_key = os.getenv("SHODAN_API_KEY")
-    proxy = input("آیا از پروکسی استفاده می‌کنید؟ (بله/خیر): ").lower() == "بله"
-    scanner = AdvancedScanner(target_url, shodan_api_key=shodan_key, proxy=proxy)
+    proxy = input("Use Proxy? (yes/no): ").strip().lower() == "yes"
+    
+    scanner = BKXScanner(target_url, shodan_api_key=shodan_key, proxy=proxy)
 
     while True:
         choice = curses.wrapper(user_interface)
@@ -218,23 +159,15 @@ def main():
             result = asyncio.run(scanner.scan_path_traversal())
         elif choice == "5":
             result = asyncio.run(scanner.scan_xss())
-        elif choice == "6":
-            result = asyncio.run(scanner.scan_sql_injection())
-        elif choice == "7":
-            result = asyncio.run(scanner.scan_rce())
         elif choice == "8":
             result = asyncio.run(scanner.shodan_scan())
-        elif choice == "9":
-            result = asyncio.run(scanner.scan_hidden_directories())
-        elif choice == "10":
-            result = asyncio.run(scanner.scan_sensitive_files())
         elif choice == "11":
-            print("خروج از برنامه.")
+            print("Exiting BKX Scanner.")
             break
         else:
-            result = "گزینه نامعتبر!"
+            result = "Invalid Option!"
 
-        print(f"\n[نتیجه]: {result}\n")
+        print(f"\n[Result]: {result}\n")
 
 if __name__ == "__main__":
     main()
