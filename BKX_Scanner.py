@@ -21,13 +21,9 @@ FEATURES = {
     "10": "Proxy Support",
     "11": "Exit"
 }
+
 LOGO = f"""{Fore.CYAN}
- █████╗ ██╗
-██╔══██╗██║
-███████║██║
-██╔══██║██║
-██║  ██║██║
-╚═╝  ╚═╝╚═╝
+BK
 {Style.RESET_ALL}"""
 
 class BKXScanner:
@@ -35,8 +31,6 @@ class BKXScanner:
         self.target_url = target_url
         self.shodan_api_key = shodan_api_key
         self.proxy = proxy
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
         self.session = aiohttp.ClientSession()
 
     async def scan_ssrf(self):
@@ -84,7 +78,11 @@ async def main():
     os.system("clear")
     slow_type(LOGO, delay=0.002)
 
-    target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}")
+    target_url = input(f"{Fore.YELLOW}Enter target URL: {Style.RESET_ALL}").strip()
+    if not target_url:
+        print(f"{Fore.RED}[✘] Target URL cannot be empty!{Style.RESET_ALL}")
+        return
+
     shodan_key = os.getenv("SHODAN_API_KEY")
     proxy = input(f"{Fore.YELLOW}Use proxy? (yes/no): {Style.RESET_ALL}").strip().lower() == "yes"
     
@@ -98,7 +96,7 @@ async def main():
         for key, feature in FEATURES.items():
             print(f"{Fore.CYAN}[{key}] {feature}{Style.RESET_ALL}")
 
-        choice = input(f"\n{Fore.YELLOW}🔎 Select an option: {Style.RESET_ALL}")
+        choice = input(f"\n{Fore.YELLOW}🔎 Select an option: {Style.RESET_ALL}").strip()
 
         if choice == "11":
             slow_type(f"{Fore.RED}Exiting...{Style.RESET_ALL}")
@@ -109,16 +107,15 @@ async def main():
             task_name = f"scan_{FEATURES[choice].lower().replace(' ', '_')}"
             task = getattr(scanner, task_name, None)
             
-            if task:
+            if callable(task):  # چک می‌کنیم که تابع معتبر باشد
                 result = await task()
                 slow_type(f"\n{Fore.GREEN}[✔] {result}\n{Style.RESET_ALL}", delay=0.005)
-                input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
             else:
-                slow_type(f"\n{Fore.RED}[✘] Invalid option!{Style.RESET_ALL}", delay=0.005)
-                input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
+                slow_type(f"\n{Fore.RED}[✘] This feature is not implemented yet!{Style.RESET_ALL}", delay=0.005)
         else:
             slow_type(f"\n{Fore.RED}[✘] Invalid input! Please enter a valid number.{Style.RESET_ALL}", delay=0.005)
-            input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
+
+        input(f"{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     asyncio.run(main())  # اجرای برنامه با مدیریت صحیح event loop
