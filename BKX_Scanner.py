@@ -196,4 +196,13 @@ class BKXScanner:
             print(f"{Fore.RED}Error running Metasploit: {e}{Style.RESET_ALL}")
 
     async def scan_dirbuster(self):
-        """ استفاده از
+        """ استفاده از DirBuster برای اسکن دایرکتوری‌ها """
+        print(f"{Fore.GREEN}Running DirBuster scan on {self.target_url}...{Style.RESET_ALL}")
+        try:
+            result = subprocess.run(["dirbuster", "-u", self.target_url, "-w", "/path/to/wordlist.txt"], capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"{Fore.YELLOW}DirBuster scan results:\n{result.stdout}{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.RED}DirBuster scan failed:{Style.RESET_ALL}\n{result.stderr}")
+        except Exception as e:
+            print(f"{Fore.RED}Error running DirBuster: {e}{Style.RESET_ALL}")
