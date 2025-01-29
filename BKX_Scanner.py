@@ -121,7 +121,7 @@ class AdvancedWebVulnerabilityScanner:
         """شروع اسکن"""
         print(f"[*] Starting scan on {self.target_url}...")
         self.links_to_scan.add(self.target_url)
-      await self.scan_links()
+        await self.scan_links()
         await self.generate_json_report()
         await self.session.close()
 
